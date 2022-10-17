@@ -1,2 +1,2 @@
 # kaggle
- open competition experiments in kaggle
+ open competition experiences in kaggle
