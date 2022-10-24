@@ -1,0 +1,15 @@
+artifact_uri: file:///Users/tungwu/Documents/GitHub/kaggle/Tabular%20Playground%20Series%20-%20Aug%202022/mlruns/0/c4acd8cad17c4e63a5e5450651b3c3fa/artifacts
+end_time: 1666600792562
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+run_id: c4acd8cad17c4e63a5e5450651b3c3fa
+run_name: victorious-boar-788
+run_uuid: c4acd8cad17c4e63a5e5450651b3c3fa
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1666600790196
+status: 3
+tags: []
+user_id: tungwu
