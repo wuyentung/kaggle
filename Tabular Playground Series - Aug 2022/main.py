@@ -11,7 +11,6 @@ import pandas as pd
 import numpy as np
 from regex import L
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
-from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import ElasticNet
 from sklearn.linear_model import LogisticRegression
@@ -21,63 +20,18 @@ import mlflow
 import mlflow.sklearn
 
 import logging
+from constant import *
+from preprocessing import X_train, y_train, df_test
 
 logging.basicConfig(level=logging.WARN)
 logger = logging.getLogger(__name__)
 #%%
-def eval_metrics(actual, pred):
-    rmse = np.sqrt(mean_squared_error(actual, pred))
-    mae = mean_absolute_error(actual, pred)
-    r2 = r2_score(actual, pred)
-    return rmse, mae, r2
-#%%
-## constants
-ID = 'id'
-FAILURE = 'failure'
-LOADING = 'loading'
-PRODUCT_CODE = 'product_code'
-ACCURACY = 'accuracy'
-RECALL = 'recall'
-F1 = 'f1'
-ROC_AUC = 'roc_auc'
-#%%
 if __name__ == "__main__":
-    warnings.filterwarnings("ignore")
-    np.random.seed(40)
-
-    # Read the kaggle csv file from dir
-    try:
-        data_df = pd.read_csv('data/train.csv')
-    except Exception as e:
-        logger.exception(
-            "Unable to download training & test CSV, check your internet connection. Error: %s", e
-        )
-    ## preprocessing preperation
-    cat_features = list(data_df.columns[1:5])
-    cat_features.append(FAILURE)
-    cat_features.remove(LOADING)
-    num_features = list(data_df.columns[5:])
-    num_features.append(LOADING)
-    num_features.remove(FAILURE)
     
-    ## data preprocessing
-    ## fill missing values for numerical features with the grouped mean for each product
-    missing_features = list(data_df.columns[10:-1])
-    missing_features.append(LOADING)
-    for feature in missing_features:
-        data_df[feature] = data_df[feature].fillna(data_df.groupby([PRODUCT_CODE])[feature].transform(np.mean))
-        
-    ## encode nominal categorical variables with dummy variables
-    for feature in cat_features[0:-1]:
-        data_df = pd.get_dummies(data_df, columns=[feature])
-        data_df = data_df.drop([data_df.columns[-1]], axis=1)
-    ## standardize all the numerical variables for better regression results
-    scaler = StandardScaler()
-    data_df[num_features] = scaler.fit_transform(data_df[num_features])
     
     ## dataset complete
-    X = data_df.drop([ID, FAILURE], axis=1).copy()
-    y = data_df[FAILURE].copy()
+    X = X_train.copy()
+    y = y_train.copy()
 
     # Cs = [10]
     # l1_ratios = [0.5]
@@ -89,7 +43,7 @@ if __name__ == "__main__":
             with mlflow.start_run():
                 lr = LogisticRegression(C=c, max_iter=500, penalty='elasticnet', l1_ratio=l1_ratio, random_state=0, solver='saga', n_jobs=4)
                 lr.fit(X, y)
-                
+                y_pred = lr.predict_proba(df_test.drop([ID, FAILURE], axis=1))
                 scores = cross_validate(lr, X, y, scoring=[ACCURACY, RECALL, F1, ROC_AUC], cv=10)
                 
                 accuracy = np.median(scores[f'test_{ACCURACY}'])
@@ -122,4 +76,7 @@ if __name__ == "__main__":
                     mlflow.sklearn.log_model(lr, "model", registered_model_name="elasticnet LogisticRegression Aug 22 model")
                 else:
                     mlflow.sklearn.log_model(lr, "model")
+    submission = pd.read_csv('data/sample_submission.csv')
+    submission[FAILURE] = y_pred[:,1]
+    submission.to_csv("submission_baseline.csv", index=False)
 #%%
