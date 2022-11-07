@@ -16,4 +16,8 @@ Predict individual product failures (in probability) of new codes with their ind
     - Fix the preprocessing issue which seeing the testing dataset before preprocessing the dataset in Baseline work
         - Filling NAs: use median value grouped by product code instead of mean to avoid skewness effect in distribution.  
 
-A slightly better than Baseline in private score
+A slightly better than Baseline in private score  
+## Pyspark
+Predict Median House Value, the dependent variable refers to the median house value per block group, among continuous independent variables.
+- Dataset from [housing_data](https://www.kaggle.com/datasets/fatmakursun/hausing-data) in kaggle.
+- This work is inspired by [Pyspark ML tutorial for beginners](https://www.kaggle.com/code/fatmakursun/pyspark-ml-tutorial-for-beginners/notebook).
