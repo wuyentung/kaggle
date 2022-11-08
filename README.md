@@ -7,7 +7,7 @@ Forecast a whole year numbers of selling in six countries and four books.
 - **My work**: linear regression with feature engineering by week.  
 
 It seems that the baseline version made a better prediction with feature engineering in day of year.  
-## MLops
+## MLOps
 Predict individual product failures (in probability) of new codes with their individual lab test results.
 - kaggle competition: Tabular Playground Series - Aug 2022
 - Baseline: [Simple Logistic Regression for Good Score (0.5837)](https://www.kaggle.com/code/ryanluoli2/simple-logistic-regression-for-good-score-0-5837)
