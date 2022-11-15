@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+import re
 
 from constant import *
 #%%
@@ -20,8 +21,7 @@ def create_l0_df(file_name) -> pd.DataFrame:
 #%%
 dfs = [create_l0_df(file_name=file_name) for file_name in data_dir]
 #%%
-df_merge = pd.concat(dfs)
-df_merge.dropna(inplace=True)
+df_merge = pd.concat(dfs, ignore_index=True)
 #%%
 s1 = df_merge[SALARY_ESTIMATE].str.split('$', expand=True)
 #%%
@@ -31,11 +31,14 @@ lower = temp[0].str.split('-', expand=True).copy()
 temp = s1[2].str.split('K', expand=True)
 upper = temp[0].str.split(' ', expand=True).copy()
 #%%
-df_merge[SALARY_LOWER] = lower[0].astype('int', errors='ignore')
-df_merge[SALARY_LOWER] = pd.to_numeric(df_merge[SALARY_LOWER])
+df_merge[SALARY_LOWER] = lower[0]
+df_merge[SALARY_UPPER] = upper[0]
 #%%
-df_merge[SALARY_UPPER] = upper[0].astype('int', errors='ignore')
+df_merge[SALARY_LOWER] = pd.to_numeric(df_merge[SALARY_LOWER])
 df_merge[SALARY_UPPER] = pd.to_numeric(df_merge[SALARY_UPPER])
+#%%
+df_merge.loc[(df_merge[SALARY_ESTIMATE].str.contains('Hour')), SALARY_LOWER] = df_merge.loc[(df_merge[SALARY_ESTIMATE].str.contains('Hour')), SALARY_LOWER]*40*52/1000
+df_merge.loc[(df_merge[SALARY_ESTIMATE].str.contains('Hour')), SALARY_UPPER] = df_merge.loc[(df_merge[SALARY_ESTIMATE].str.contains('Hour')), SALARY_UPPER]*40*52/1000
 #%%
 df_merge.groupby(JOB_CAT).mean([SALARY_LOWER, SALARY_UPPER])
 #%%
