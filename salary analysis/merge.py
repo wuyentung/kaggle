@@ -3,6 +3,8 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+import seaborn as sns
+import plotly.graph_objects as go
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 
@@ -62,4 +64,72 @@ skills_list = {skill for skill_set in skill_types.values() for skill in skill_se
 vectorizer = TfidfVectorizer(stop_words=stopward_list, vocabulary=skills_list)
 X = vectorizer.fit_transform(df_merge[JOB_DES])
 vectorizer.get_feature_names_out()
+#%%
+## term frequency document-term matrix
+tf_matrix = X.toarray() * vectorizer.idf_
+#%%
+## occurance document-term matrix
+occurance_matrix = np.array([[True if value else False for value in row] for row in tf_matrix])
+occurance_df = pd.DataFrame(occurance_matrix, columns=skills_list)
+#%%
+## since we have quanty information of each skill types, we use probability instead of association rule
+# [1, 0, 1, 1], [0, 0, 1], [1, 0, 1, 0, 0, 0], [1, 1]
+# [1, 0, 0, 1], [0, 1, 1], [0, 0, 1, 1, 1, 1], [0, 1]
+# [1, 0, 0, 0], [1, 0, 1], [1, 0, 0, 0, 0, 0], [0, 0]
+
+## skill counts among skill types: for each type, sum occurance, sum all descriptions
+#%%
+skill_df = pd.DataFrame(np.array([occurance_df[skill_types[key]].T.sum() for key in skill_types.keys()]).T, columns=skill_types.keys())
+#%%
+## skill type summary needed in job describtion
+plt.figure(figsize=(6, 8))
+plt.pie(skill_df.sum(), labels=skill_df.columns, colors=sns.color_palette('bright'), autopct='%.0f%%')
+plt.title('skill type summary needed in job describtion', fontsize=10)
+plt.show()
+#%%
+skill_df[JOB_CAT] = df_merge[JOB_CAT]
+#%%
+job_skill_types = skill_df.groupby(JOB_CAT).mean()
+#%%
+def radar_plot(df:pd.DataFrame, row:str):
+       fig = go.Figure(data=go.Scatterpolar(
+       r=df.loc[row],
+       theta=df.columns,
+       fill='toself'
+       ))
+
+       fig.update_layout(
+       polar=dict(
+       radialaxis=dict(
+       visible=True
+       ),
+       ),
+       showlegend=False
+       )
+
+       fig.show()
+radar_plot(df=job_skill_types, row=_)
+#%%
+for row in job_skill_types.index:
+       radar_plot(df=job_skill_types, row=row)
+#%%
+def radar_plot_compare(df:pd.DataFrame):
+       fig = go.Figure()
+
+       for row in df.index:
+              fig.add_trace(go.Scatterpolar(r=df.loc[row], theta=df.columns, fill='toself', name=row))
+
+       fig.update_layout(
+              polar=dict(radialaxis=dict(visible=True,range=[0, df.max().max()*1.1])),
+              showlegend=False
+              )
+
+       fig.show()
+radar_plot_compare(df=job_skill_types)
+#%%
+## normorlizing each skill type by each max should be more understanderable when comparing job cat
+job_skill_types_norm = job_skill_types.copy()
+for col in job_skill_types_norm.columns:
+       job_skill_types_norm[col] /= job_skill_types_norm[col].max()
+radar_plot_compare(df=job_skill_types_norm)
 #%%
