@@ -108,7 +108,7 @@ def radar_plot(df:pd.DataFrame, row:str):
        )
 
        fig.show()
-radar_plot(df=job_skill_types, row=_)
+radar_plot(df=job_skill_types, row=job_skill_types.index[0])
 #%%
 for row in job_skill_types.index:
        radar_plot(df=job_skill_types, row=row)
