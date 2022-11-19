@@ -93,21 +93,18 @@ job_skill_types = skill_df.groupby(JOB_CAT).mean()
 #%%
 def radar_plot(df:pd.DataFrame, row:str):
        fig = go.Figure(data=go.Scatterpolar(
-       r=df.loc[row],
-       theta=df.columns,
-       fill='toself'
-       ))
+              r=df.loc[row],
+              theta=df.columns,
+              fill='toself'
+              ))
 
        fig.update_layout(
-       polar=dict(
-       radialaxis=dict(
-       visible=True
-       ),
-       ),
-       showlegend=False
-       )
+              polar=dict(radialaxis=dict(visible=True),), 
+              showlegend=False
+              )
 
        fig.show()
+       pass
 radar_plot(df=job_skill_types, row=job_skill_types.index[0])
 #%%
 for row in job_skill_types.index:
@@ -125,6 +122,7 @@ def radar_plot_compare(df:pd.DataFrame):
               )
 
        fig.show()
+       pass
 radar_plot_compare(df=job_skill_types)
 #%%
 ## normorlizing each skill type by each max should be more understanderable when comparing job cat
@@ -133,3 +131,5 @@ for col in job_skill_types_norm.columns:
        job_skill_types_norm[col] /= job_skill_types_norm[col].max()
 radar_plot_compare(df=job_skill_types_norm)
 #%%
+## TODO: 能力關係圖
+## TODO: 薪水級距預測
