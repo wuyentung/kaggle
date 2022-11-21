@@ -8,6 +8,10 @@ import plotly.graph_objects as go
 import networkx as nx 
 
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.metrics import mean_absolute_percentage_error
+from sklearn.preprocessing import Normalizer
 
 from constant import *
 #%%
@@ -199,12 +203,37 @@ def job_skill_graph(job:str):
 job_skill_graph(job_cats[0])
 #%%
 ## TODO: 薪水級距預測
-df_modelling = pd.DataFrame(X.toarray(), columns=skills_list)
-df_modelling[[JOB_CAT, SIZE, SALARY_LOWER, SALARY_UPPER]] = df_merge[[JOB_CAT, SIZE, SALARY_LOWER, SALARY_UPPER]]
-df_modelling = df_modelling.loc[df_modelling[SIZE].str.contains('employees').fillna(False)]
-#%%
+## feature engineering
+df_modeling = pd.DataFrame(X.toarray(), columns=skills_list)
+df_modeling[[JOB_CAT, SIZE, SALARY_LOWER, SALARY_UPPER]] = df_merge[[JOB_CAT, SIZE, SALARY_LOWER, SALARY_UPPER]]
+df_modeling[JUNIOR]  = [1 if _ else 0 for _ in df_merge[JUNIOR]]
+df_modeling[MID]  = [1 if _ else 0 for _ in df_merge[MID]]
+df_modeling[SENIOR]  = [1 if _ else 0 for _ in df_merge[SENIOR]]
+df_modeling = df_modeling.loc[df_modeling[SIZE].str.contains('employees').fillna(False)]
 ## one-hot encoding
-df_modelling = pd.get_dummies(df_modelling, prefix=[JOB_CAT, SIZE], drop_first=True)
+df_modeling = pd.get_dummies(df_modeling, prefix=[JOB_CAT, SIZE], drop_first=True)
 #%%
 ## train-test split
+X_train, X_test, y_train, y_test = train_test_split(df_modeling.drop(columns=[SALARY_LOWER, SALARY_UPPER]), df_modeling[[SALARY_LOWER, SALARY_UPPER]], test_size=0.2, random_state=0)
+#%%
+## since most of the features are range in [0, 1], we normalize the y to get a better mapping, and evaluate in MAPE
+transformer = Normalizer().fit(y_train)
+y_train = pd.DataFrame(transformer.transform(y_train), columns=y_train.columns)
+y_test = pd.DataFrame(transformer.transform(y_test), columns=y_train.columns)
+#%%
 ## predict with XGBoost (two models)
+model_lower = GradientBoostingRegressor(random_state=0, warm_start=True, n_estimators=200)
+model_lower.fit(X_train, y_train[SALARY_LOWER])
+mape_lower = mean_absolute_percentage_error(model_lower.predict(X_test), y_test[SALARY_LOWER])
+#%%
+upper_model = GradientBoostingRegressor(random_state=0, warm_start=True, n_estimators=200)
+upper_model.fit(X_train, y_train[SALARY_UPPER])
+mape_upper = mean_absolute_percentage_error(upper_model.predict(X_test), y_test[SALARY_UPPER])
+#%%
+def feature_importances_transform(model:GradientBoostingRegressor, n:int=10):
+       feature_importances_df = pd.DataFrame.from_dict({'Feature': X_train.columns, 'Importance': model.feature_importances_}).sort_values(by='Importance', ascending=False)
+       return feature_importances_df.head(n)
+feature_importances_transform(model=model_lower)
+#%%
+feature_importances_transform(model=upper_model)
+#%%
