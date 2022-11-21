@@ -138,7 +138,6 @@ for col in job_skill_importance_norm.columns:
 radar_plot_compare(df=job_skill_importance_norm)
 #%%
 ## TODO: 能力關係圖
-## TODO: 薪水級距預測
 #%%
 ## calculate confidence(A->B)= P(A^B)/P(A)
 job_cats = job_skill_sum.index.to_list()
@@ -194,8 +193,18 @@ def job_skill_graph(job:str):
        plt.figure(figsize=(20, 16))
        nx.draw_networkx_nodes(G, pos, node_size = node_size, node_color='lightblue', alpha=.7)
        nx.draw_networkx_edges(G, pos, arrows=True, arrowsize=50, edge_color='grey', arrowstyle="-|>", width = edge_width, style='-', connectionstyle='arc3, rad = .03')
-       nx.draw_networkx_labels(G, pos, font_size=20)
+       nx.draw_networkx_labels(G, pos, font_size=30)
        plt.title(f'{job} Skills', size = 50)
        plt.show()
 job_skill_graph(job_cats[0])
 #%%
+## TODO: 薪水級距預測
+df_modelling = pd.DataFrame(X.toarray(), columns=skills_list)
+df_modelling[[JOB_CAT, SIZE, SALARY_LOWER, SALARY_UPPER]] = df_merge[[JOB_CAT, SIZE, SALARY_LOWER, SALARY_UPPER]]
+df_modelling = df_modelling.loc[df_modelling[SIZE].str.contains('employees').fillna(False)]
+#%%
+## one-hot encoding
+df_modelling = pd.get_dummies(df_modelling, prefix=[JOB_CAT, SIZE], drop_first=True)
+#%%
+## train-test split
+## predict with XGBoost (two models)
