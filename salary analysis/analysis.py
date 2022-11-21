@@ -86,12 +86,6 @@ occurance_df = pd.DataFrame(occurance_matrix, columns=skills_list)
 #%%
 skill_df = pd.DataFrame(np.array([occurance_df[skill_types[key]].T.sum() for key in skill_types.keys()]).T, columns=skill_types.keys())
 #%%
-## skill type summary needed in job describtion
-plt.figure(figsize=(6, 8))
-plt.pie(skill_df.sum(), labels=skill_df.columns, colors=sns.color_palette('bright'), autopct='%.0f%%')
-plt.title('skill type summary needed in job describtion', fontsize=10)
-plt.show()
-#%%
 skill_df[JOB_CAT] = df_merge[JOB_CAT]
 ## skill importance for each job cat: proportion of each skill type occurance for all skills
 job_skill_sum = skill_df.groupby(JOB_CAT).sum()
@@ -115,10 +109,7 @@ def radar_plot(df:pd.DataFrame, row:str):
 
        fig.show()
        pass
-radar_plot(df=job_skill_importance, row=job_skill_importance.index[0])
 #%%
-for row in job_skill_importance.index:
-       radar_plot(df=job_skill_importance, row=row)
 #%%
 def radar_plot_compare(df:pd.DataFrame):
        fig = go.Figure()
@@ -133,13 +124,6 @@ def radar_plot_compare(df:pd.DataFrame):
 
        fig.show()
        pass
-radar_plot_compare(df=job_skill_importance)
-#%%
-## normorlizing each skill type by each max should be more understanderable when comparing job cat
-job_skill_importance_norm = job_skill_importance.copy()
-for col in job_skill_importance_norm.columns:
-       job_skill_importance_norm[col] /= job_skill_importance_norm[col].max()
-radar_plot_compare(df=job_skill_importance_norm)
 #%%
 ## TODO: 能力關係圖
 #%%
@@ -200,7 +184,6 @@ def job_skill_graph(job:str):
        nx.draw_networkx_labels(G, pos, font_size=30)
        plt.title(f'{job} Skills', size = 50)
        plt.show()
-job_skill_graph(job_cats[0])
 #%%
 ## TODO: 薪水級距預測
 ## feature engineering
@@ -233,7 +216,26 @@ mape_upper = mean_absolute_percentage_error(upper_model.predict(X_test), y_test[
 def feature_importances_transform(model:GradientBoostingRegressor, n:int=10):
        feature_importances_df = pd.DataFrame.from_dict({'Feature': X_train.columns, 'Importance': model.feature_importances_}).sort_values(by='Importance', ascending=False)
        return feature_importances_df.head(n)
-feature_importances_transform(model=model_lower)
 #%%
-feature_importances_transform(model=upper_model)
-#%%
+if __name__=='__main__':
+       #%%
+       ## skill type summary needed in job describtion
+       plt.figure(figsize=(6, 8))
+       plt.pie(skill_df.sum(), labels=skill_types.keys(), colors=sns.color_palette('bright'), autopct='%.0f%%')
+       plt.title('skill type summary needed in job describtion', fontsize=10)
+       plt.show()
+       #%%
+       radar_plot(df=job_skill_importance, row=job_skill_importance.index[0])
+       for row in job_skill_importance.index:
+              radar_plot(df=job_skill_importance, row=row)
+       radar_plot_compare(df=job_skill_importance)
+       ## normorlizing each skill type by each max should be more understanderable when comparing job cat
+       job_skill_importance_norm = job_skill_importance.copy()
+       for col in job_skill_importance_norm.columns:
+              job_skill_importance_norm[col] /= job_skill_importance_norm[col].max()
+       radar_plot_compare(df=job_skill_importance_norm)
+       #%%
+       job_skill_graph(job_cats[0])
+       feature_importances_transform(model=model_lower)
+       #%%
+       feature_importances_transform(model=upper_model)
