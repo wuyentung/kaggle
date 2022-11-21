@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import os
 import seaborn as sns
 import plotly.graph_objects as go
+import networkx as nx 
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 
@@ -88,8 +89,13 @@ plt.title('skill type summary needed in job describtion', fontsize=10)
 plt.show()
 #%%
 skill_df[JOB_CAT] = df_merge[JOB_CAT]
+## skill importance for each job cat: proportion of each skill type occurance for all skills
+job_skill_sum = skill_df.groupby(JOB_CAT).sum()
+job_skill_importance = job_skill_sum.copy()
+for col in job_skill_importance.columns:
+       job_skill_importance[col] /= job_skill_sum.T.sum()
 #%%
-job_skill_types = skill_df.groupby(JOB_CAT).mean()
+# job_skill_types = skill_df.groupby(JOB_CAT).mean()
 #%%
 def radar_plot(df:pd.DataFrame, row:str):
        fig = go.Figure(data=go.Scatterpolar(
@@ -105,10 +111,10 @@ def radar_plot(df:pd.DataFrame, row:str):
 
        fig.show()
        pass
-radar_plot(df=job_skill_types, row=job_skill_types.index[0])
+radar_plot(df=job_skill_importance, row=job_skill_importance.index[0])
 #%%
-for row in job_skill_types.index:
-       radar_plot(df=job_skill_types, row=row)
+for row in job_skill_importance.index:
+       radar_plot(df=job_skill_importance, row=row)
 #%%
 def radar_plot_compare(df:pd.DataFrame):
        fig = go.Figure()
@@ -123,13 +129,73 @@ def radar_plot_compare(df:pd.DataFrame):
 
        fig.show()
        pass
-radar_plot_compare(df=job_skill_types)
+radar_plot_compare(df=job_skill_importance)
 #%%
 ## normorlizing each skill type by each max should be more understanderable when comparing job cat
-job_skill_types_norm = job_skill_types.copy()
-for col in job_skill_types_norm.columns:
-       job_skill_types_norm[col] /= job_skill_types_norm[col].max()
-radar_plot_compare(df=job_skill_types_norm)
+job_skill_importance_norm = job_skill_importance.copy()
+for col in job_skill_importance_norm.columns:
+       job_skill_importance_norm[col] /= job_skill_importance_norm[col].max()
+radar_plot_compare(df=job_skill_importance_norm)
 #%%
 ## TODO: 能力關係圖
 ## TODO: 薪水級距預測
+#%%
+## calculate confidence(A->B)= P(A^B)/P(A)
+job_cats = job_skill_sum.index.to_list()
+## column-wise: for each job cat, [col][rol]: confidence(col->rol)
+def make_confidence_df(confidence_dict:dict):
+       d = {i:[confidence_dict[(j, i)] for j in skill_types.keys()] for i in skill_types.keys()}  
+       return pd.DataFrame.from_dict(data=d, orient='index', columns=skill_types.keys())
+def cal_job_confidence(df:pd.DataFrame, job:str)->dict:
+       confidence_dict = {}
+       new_df = df.loc[df[JOB_CAT] == job].copy()
+       for i in skill_types.keys():
+              for j in skill_types.keys():
+                     if i == j:
+                            confidence_dict[(i, j)] = np.nan
+                            continue
+                     confidence_dict[(i, j)] = new_df[[i, j]].T.min().sum()/job_skill_sum[i][job]
+       return confidence_dict
+job_confidence_dicts = {job:make_confidence_df(cal_job_confidence(df=skill_df, job=job)) for job in job_cats}
+#%%
+## then the job_confidence_dicts stores confidence(A->B) by jobs, and we should remains the maximize of confidence(A->B) and confidence(B->A) when we visualizing it, i.e., the weight between skills for each job cat
+def find_edge_weight(df:pd.DataFrame, i:str, j:str):
+       return (i, j, df[i][j]) if df[i][j] > df[j][i] else (j, i, df[j][i])
+## since the edges for n nodes is n(n+1)/2, we pick two edges to represent each node
+def top_2_node_edge(edge_weight_list:list):
+       ## remove duplicates
+       edge_weight_list = list(dict.fromkeys(edge_weight_list))
+       
+       top_2_edge_weight_list = []
+       for skill_type in skill_types.keys():
+              largest, sec_largest = (0, 0, 0), (0, 0, 0)
+              for edge_weight in edge_weight_list:
+                     if skill_type in edge_weight[0] or skill_type in edge_weight[1]:
+                            # print(edge_weight)
+                            if edge_weight[2] > sec_largest[2]:
+                                   if edge_weight[2] > largest[2]:
+                                          largest = edge_weight
+                                   else:
+                                          sec_largest = edge_weight
+              top_2_edge_weight_list.append(largest)
+              top_2_edge_weight_list.append(sec_largest)
+              # print(largest)
+              # print(sec_largest)
+       return top_2_edge_weight_list
+#%%
+def job_skill_graph(job:str):
+       G = nx.DiGraph()  # or DiGraph, MultiGraph, MultiDiGraph, etc
+       df = job_confidence_dicts[job]
+       G.add_weighted_edges_from(top_2_node_edge([find_edge_weight(df=df, i=i, j=j) for i in skill_types.keys() for j in skill_types.keys()]))
+       pos = nx.circular_layout(G)
+       edge_width = [10*G.get_edge_data(u, v)['weight'] for u, v in G.edges()]
+       node_size = [40000*job_skill_importance[skill_type][job] for skill_type in skill_types.keys()]
+
+       plt.figure(figsize=(20, 16))
+       nx.draw_networkx_nodes(G, pos, node_size = node_size, node_color='lightblue', alpha=.7)
+       nx.draw_networkx_edges(G, pos, arrows=True, arrowsize=50, edge_color='grey', arrowstyle="-|>", width = edge_width, style='-', connectionstyle='arc3, rad = .03')
+       nx.draw_networkx_labels(G, pos, font_size=20)
+       plt.title(f'{job} Skills', size = 50)
+       plt.show()
+job_skill_graph(job_cats[0])
+#%%
