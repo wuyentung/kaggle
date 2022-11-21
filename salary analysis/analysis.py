@@ -73,25 +73,29 @@ vectorizer.get_feature_names_out()
 ## term frequency document-term matrix
 tf_matrix = X.toarray() * vectorizer.idf_
 #%%
-## occurance document-term matrix
-occurance_matrix = np.array([[True if value else False for value in row] for row in tf_matrix])
-occurance_df = pd.DataFrame(occurance_matrix, columns=skills_list)
+## occurrence document-term matrix
+occurrence_matrix = np.array([[True if value else False for value in row] for row in tf_matrix])
+occurrence_df = pd.DataFrame(occurrence_matrix, columns=skills_list)
 #%%
 ## since we have quanty information of each skill types, we use probability instead of association rule
 # [1, 0, 1, 1], [0, 0, 1], [1, 0, 1, 0, 0, 0], [1, 1]
 # [1, 0, 0, 1], [0, 1, 1], [0, 0, 1, 1, 1, 1], [0, 1]
 # [1, 0, 0, 0], [1, 0, 1], [1, 0, 0, 0, 0, 0], [0, 0]
 
-## skill counts among skill types: for each type, sum occurance, sum all descriptions
+## skill counts among skill types: for each type, sum occurrence, sum all descriptions
 #%%
-skill_df = pd.DataFrame(np.array([occurance_df[skill_types[key]].T.sum() for key in skill_types.keys()]).T, columns=skill_types.keys())
+skill_df = pd.DataFrame(np.array([occurrence_df[skill_types[key]].T.sum() for key in skill_types.keys()]).T, columns=skill_types.keys())
 #%%
 skill_df[JOB_CAT] = df_merge[JOB_CAT]
-## skill importance for each job cat: proportion of each skill type occurance for all skills
+## skill importance for each job cat: proportion of each skill type occurrence for all skills
 job_skill_sum = skill_df.groupby(JOB_CAT).sum()
 job_skill_importance = job_skill_sum.copy()
 for col in job_skill_importance.columns:
        job_skill_importance[col] /= job_skill_sum.T.sum()
+## normorlizing each skill type by each max should be more understanderable when comparing job cat
+job_skill_importance_norm = job_skill_importance.copy()
+for col in job_skill_importance_norm.columns:
+       job_skill_importance_norm[col] /= job_skill_importance_norm[col].max()
 #%%
 # job_skill_types = skill_df.groupby(JOB_CAT).mean()
 #%%
@@ -99,12 +103,13 @@ def radar_plot(df:pd.DataFrame, row:str):
        fig = go.Figure(data=go.Scatterpolar(
               r=df.loc[row],
               theta=df.columns,
-              fill='toself'
+              fill='toself', 
               ))
 
        fig.update_layout(
               polar=dict(radialaxis=dict(visible=True),), 
-              showlegend=False
+              showlegend=True,
+              title_text=row, title_x=0.5
               )
 
        fig.show()
@@ -219,20 +224,16 @@ def feature_importances_transform(model:GradientBoostingRegressor, n:int=10):
 #%%
 if __name__=='__main__':
        #%%
-       ## skill type summary needed in job describtion
+       ## skill type summary needed in job description
        plt.figure(figsize=(6, 8))
        plt.pie(skill_df.sum(), labels=skill_types.keys(), colors=sns.color_palette('bright'), autopct='%.0f%%')
-       plt.title('skill type summary needed in job describtion', fontsize=10)
+       plt.title('skill type summary needed in job description', fontsize=10)
        plt.show()
        #%%
        radar_plot(df=job_skill_importance, row=job_skill_importance.index[0])
        for row in job_skill_importance.index:
               radar_plot(df=job_skill_importance, row=row)
        radar_plot_compare(df=job_skill_importance)
-       ## normorlizing each skill type by each max should be more understanderable when comparing job cat
-       job_skill_importance_norm = job_skill_importance.copy()
-       for col in job_skill_importance_norm.columns:
-              job_skill_importance_norm[col] /= job_skill_importance_norm[col].max()
        radar_plot_compare(df=job_skill_importance_norm)
        #%%
        job_skill_graph(job_cats[0])
